@@ -1,0 +1,133 @@
+fn add_chars_n(mut s: String, c: char, nr: u8) -> String /*P1*/ {
+    let a: String = String::from(c);
+    let mut i = 0;
+    while i < nr {
+        s += &a;
+        i += 1;
+    }
+    return s;
+}
+fn add_chars_n2(s: &mut String, c: char, nr: u8) /*P2*/
+{
+    let a: String = String::from(c);
+    let mut i = 0;
+    while i < nr {
+        s.push_str(&a);
+        i += 1;
+    }
+}
+fn add_spaces(mut s: String, _nr: u8) -> String /*P3 */ {
+    let a: String = String::from(" ");
+    let mut i1 = 0;
+    while i1 < _nr {
+        s += &a;
+        i1 += 1;
+    }
+    return s;
+}
+fn add_str(mut s: String, a: &str) -> String {
+    s.push_str(a);
+    return s;
+}
+fn add_integer(mut s: String, nr: u32) -> String {
+    let mut count = 0;
+    let mut cnr = nr;
+    let mut o = 0;
+    while cnr > 0 {
+        o = o * 10 + cnr % 10;
+        cnr /= 10;
+    }
+    while o > 0 {
+        if (count % 3 == 0 && count != 0) {
+            let b: String = String::from("_");
+            s += &b;
+        }
+        let bc: u8 = (o % 10).try_into().unwrap();
+        let c = (bc + '0' as u8) as char;
+        let a: String = String::from(c);
+        s += &a;
+        o /= 10;
+        count += 1;
+    }
+    return s;
+}
+
+fn add_float(mut s: String, nr2: f32) -> String {
+    let mut nr = 0;
+    let mut nrc = nr2;
+    while nrc.fract() != 0.0 {
+        nr += 1;
+        nrc = nrc * 10.0;
+    }
+    let mut cnr: i32 = nrc as i32;
+    let mut o = 0;
+    let mut NrC = 0;
+    while cnr > 0 {
+        NrC += 1;
+        o = o * 10 + cnr % 10;
+        cnr /= 10;
+    }
+    let mut count = 0;
+    nr = NrC - nr;
+    while o > 0 {
+        if (nr == 0) {
+            let b: String = String::from(".");
+            s += &b;
+        }
+        let bc: u8 = (o % 10).try_into().unwrap();
+        let c = (bc + '0' as u8) as char;
+        let a: String = String::from(c);
+        s += &a;
+        o /= 10;
+        nr -= 1;
+    }
+    return s;
+}
+fn main() {
+    let mut s = String::from("");
+    let mut i = 0;
+    /*while i < 26 {
+        let c = (i as u8 + 'a' as u8) as char;
+        add_chars_n2(& mut s, c, 26 - i);
+
+        i += 1;
+    }*/
+    let mut nrs: u8 = 65;
+    s = add_spaces(s, nrs);
+    s = add_str(s, "I 💚");
+    s = add_str(s, "\n");
+    s = add_spaces(s, nrs);
+    s = add_str(s, "RUST.");
+    s = add_str(s, "\n");
+    s = add_str(s, "\n");
+    nrs = 18;
+    s = add_spaces(s, nrs);
+    s = add_str(s, "Most");
+    let nrs: usize = "downloaded".len();
+    s = add_spaces(s, (nrs + 2) as u8);
+    s = add_str(s, "crate");
+    s = add_spaces(s, 8);
+    s = add_integer(s, 306437968);
+    let nrs: usize = "downloads".len() + 2;
+    s = add_spaces(s, (nrs + 2) as u8);
+    s = add_str(s, "and");
+    s = add_spaces(s, 5);
+    s = add_str(s, "lastest");
+    s = add_spaces(s, 9);
+    s = add_str(s, "is");
+    s = add_str(s, "\n");
+    s = add_spaces(s, 4 + 19);
+    s = add_str(s, "downloaded");
+    s = add_spaces(s, 8);
+    s = add_str(s, "has");
+    s = add_spaces(s, 16);
+    s = add_str(s, "downloads");
+    s = add_spaces(s, 6);
+    s = add_str(s, "the");
+    s = add_spaces(s, 9);
+    s = add_str(s, "version");
+    s = add_spaces(s, 4);
+    s = add_float(s, 2.038);
+    s = add_str(s, ".");
+    print!("{}", s);
+}
