@@ -1,0 +1,120 @@
+
+
+fn next_prime(x: u16) -> Option<u16>{   ///ex1
+    let mut ok=0;
+    let mut s=0;
+    let mut i=x;
+    while (i<65535)  && (ok==0)
+    {
+       let mut ok1=1;
+       let mut d=2;
+       while d<i/2
+       {
+        if i%d==0{ok1=0}
+        d+=1;
+       }
+       if ok1==1
+          {s=i; ok=1}
+        i+=1;
+    }
+    if ok==1
+    {
+        Some(s)
+    }
+    else {None}
+        
+}
+
+fn checked_add_u32(a: u32, b: u32) -> u32 {
+    let (result, overflow) = a.overflowing_add(b);
+    if overflow {
+        panic!("Addition overflowed u32");
+    }
+    result
+}
+
+fn checked_mul_u32(a: u32, b: u32) -> u32 {
+    let (result, overflow) = a.overflowing_mul(b);
+    if overflow {
+        panic!("Multiplication overflowed u32");
+    }
+    result
+}
+enum MathError {
+    Overflow,
+}
+
+fn checked_add_u32_1(a: u32, b: u32) -> Result<u32, MathError> {
+    let (result, overflow) = a.overflowing_add(b);
+    if overflow {
+        Err(MathError::Overflow)
+    } else {
+        Ok(result)
+    }
+}
+
+fn checked_mul_u32_1(a: u32, b: u32) -> Result<u32, MathError> {
+    let (result, overflow) = a.overflowing_mul(b);
+    if overflow {
+        Err(MathError::Overflow)
+    } else {
+        Ok(result)
+    }
+}
+enum Errors{
+    NotAnAscii,
+    NotADigit,
+    NotBase16,
+    NotLetter,
+    NotPrintable
+}
+fn to_uppercase(a:char)->Result<char,Errors>
+{
+  if (a<'a')||(a>'z')
+  {
+    Err(Errors::NotLetter)
+  }
+  else {
+      Ok(a.to_ascii_uppercase())
+  }
+}
+fn to_lowercase(a:char)->Result<char,Errors>
+{
+   if (a<'A') || (a>'Z')
+   {
+    Err(Errors::NotLetter)
+   }
+   else {
+    Ok(a.to_ascii_lowercase())
+   }
+}
+fn printchar(a:char)->Result<(),Errors>
+{
+    if(a.is_control()==false)
+    {
+        Err(Errors::NotPrintable)
+    }
+    else {
+        println!("{}",a);
+        Ok(())
+    }
+}
+fn print_error(error: &Errors) {
+    match error {
+        Errors::NotLetter => println!("The input was not a letter"),
+        Errors::NotADigit => println!("The input was not a digit"),
+        Errors::NotBase16=>println!("Not base 16"),
+        Errors::NotAnAscii=>println!(""),
+        Errors::NotPrintable=>println!("The character can not be printed")
+    }
+}
+fn main() {
+    let mut n=2000;
+   /* pb1. while let Some(i)=next_prime(n){
+        println!("Number is {i}");
+        n+=1;
+    }*/
+    let x=checked_add_u32(20000000,4294967294 );
+    println!("{}",x);
+    
+}
