@@ -20,14 +20,9 @@ fn get_directory_contents(directory_path: &str) -> Result<Vec<String>, std::io::
         for entry in entries_iter {
             if let Ok(entry) = entry {
                 let path = entry.path();
-                if path.is_dir() {
+                if !path.is_dir() {
                     entries.push(path.display().to_string());
-                    if let Ok(subdir_entries) = get_directory_contents(&path.to_string_lossy()) {
-                        entries.extend(subdir_entries);
-                    }
-                } else {
-                    entries.push(path.display().to_string());
-                }
+                } 
             }
             else { return Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -261,7 +256,6 @@ fn copy_files_between_archives(src_path: &str, dest_path: &str) -> Result<(), io
             let src_time1: DateTime=src_file.last_modified();
             let dest_t1=metadata(&dest_file_path).unwrap().modified().unwrap();
             let dest_t=dest_t1.duration_since(UNIX_EPOCH).unwrap().as_micros();
-            //unix=1.01.1970
             let dt=Utc.timestamp_micros(dest_t as i64).unwrap();
             let y2= src_time1.year(); //an sursa
             let y1=dt.year();
@@ -561,7 +555,7 @@ fn sincronizare_ftp(loc: Vec<(String, String)>)-> Result<(),FtpError>
             }
             else {
                 println!("Egal");
-                for (i1,v) in fisiere.to_owned()
+                for (i1,v) in fisiere.clone()
                 {
                     let path_a=path_v[i].clone()+"/"+&i1;
                     println!("Primul {}",path_a);
@@ -575,7 +569,7 @@ fn sincronizare_ftp(loc: Vec<(String, String)>)-> Result<(),FtpError>
                         let l_p23="C:\\Users\\bolot\\OneDrive\\Desktop\\Folder nou\\".to_string()+&i1;
                         println!("Download ");
                         download(&mut ftp_v[i], l_p23.clone(), path_a);
-                        fisiere.insert(i1.clone(),i);
+                        fisiere.insert(i1.to_string().clone(),i);
                         for (iss,zz) in ftp_v.iter_mut().enumerate()
                         {
                             upload(zz, i1.clone(), path_v[iss].clone(), l_p23.clone());
