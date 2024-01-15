@@ -5,8 +5,8 @@ use std::fs::{File, metadata};
 //use clap::error::Error;
 //use clap::builder::Str;
 use ftp::{FtpError, FtpStream};
-use std::{fs, path};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::fs;
+use std::time:: UNIX_EPOCH;
 use zip::DateTime;
 use zip::read::ZipArchive;
 use zip::write::FileOptions;
@@ -38,176 +38,6 @@ fn get_directory_contents(directory_path: &str) -> Result<Vec<String>, std::io::
     }
 
     Ok(entries)
-}
-
-fn sincronizare_f(locatii: Vec<(String,String)>)
-{
-    initial_f(locatii.clone());
-    let mut vec_m:Vec<SystemTime>=Vec::new();
-    //iau ultimii timpi
-    for (_,b) in locatii.iter()
-    {
-        match fs::metadata(b) {
-            Ok(metadata) => {
-              let  modification_time=metadata.modified();
-              vec_m.push(modification_time.unwrap());
-              //println!("{:?}",modification_time.unwrap());
-            }
-            Err(e)=> println!("{}",e)
-        }
-    }
-    loop {    
-        for (ind,(_,b)) in locatii.iter().enumerate()
-        {
-            println!("{b}");
-            match fs::metadata(b) {
-                Ok(metadata) => {
-                    if let Ok(modification_time) = metadata.modified() {
-                        //println!("Ultima modificare a directorului {b}: {:?}", modification_time);
-                        //println!("salve: {:?}",a_t);
-                        let a_t=vec_m[ind];
-                        match a_t.cmp(&modification_time) {
-                            std::cmp::Ordering::Less => {
-                                vec_m[ind]=modification_time;
-                                println!("Ultima modificare a directorului {b}: {:?}", modification_time);
-                               
-                                let director_m=get_directory_contents(b).unwrap();
-                                println!("E in directorul modificat {:?}",director_m);
-                                for (_,o_folders) in locatii.iter()
-                                    {
-                                        if o_folders!=b
-                                       {
-                                        let curr_dir=get_directory_contents(o_folders);
-                                        println!("Directorul actual {:?}",curr_dir);
-                                        for it in curr_dir.unwrap()
-                                        {
-                                            let  path=it.rsplit('\\').next().unwrap();
-                                            let path1=(*b.clone()).to_string()+"\\"+path;
-                                            println!("{path1}");
-                                            if !director_m.contains(&path1)
-                                            {
-                                                match fs::remove_file(it.clone()) {
-                                                    Ok(_) => println!("Fișierul {it} a fost șters cu succes."),
-                                                    Err(e) => eprintln!("Eroare la ștergerea fișierului: {}", e),
-                                                }
-                                            }
-                                        } 
-                                        }
-                                   
-                                }
-                                println!("Apel la less!!!");
-                                initial_f(locatii.clone());  //adauga fiserele noi
-                                break;
-                            }
-                            std::cmp::Ordering::Equal => {
-                            }
-                            std::cmp::Ordering::Greater => {
-                            }
-                        }
-                    } else {
-                        println!("Nu s-a putut obține timpul ultimei modificări");
-                    }
-                    
-                }
-                Err(e) => {
-                    println!("Eroare la obținerea metadatelor: {}", e);
-                }
-            }
-        }
-        initial_f(locatii.clone());
-        std::thread::sleep(std::time::Duration::from_secs(3));     
-    }
-}
-
-
-fn initial_f(loc: Vec<(String, String)>) {
-    let mut index=0;
-    let mut f_names: Vec<String>=Vec::new();
-    let mut all_entries = HashMap::new();
-    for (_, path) in loc.iter() {
-        let last_component = path.rsplit('\\').next();
-        match last_component {
-
-
-            Some(component) => {f_names.push(component.to_string());},
-            None => eprintln!("Path does not have a last component"), //nu se ajunge aici
-        }
-        match get_directory_contents(path) {
-            Ok(entries) => {
-                for entry in entries.iter() {
-                    let mut nt:SystemTime=SystemTime::now();
-                    let  mut ot:SystemTime=SystemTime::now();
-                    match fs::metadata(entry)
-                    {
-                        Ok(metadate)=> nt=metadate.modified().unwrap(),
-                        Err(e)=> println!("eroare {}",e),
-                    }                      
-
-                    let as1=&entry[entry.find(last_component.unwrap()).unwrap()+last_component.unwrap().to_string().len()..];
-                    if all_entries.contains_key(as1)
-                    {
-                        let b: usize=*all_entries.get(as1).unwrap();
-                        let locv: String=loc[b].1.clone()+ as1;
-                       // println!("locatia este {locv}");
-                        match fs::metadata(locv)
-                        {
-                            Ok(metadate)=> ot=metadate.modified().unwrap(),
-                            Err(e)=> println!("eroare {}",e),
-                        }  
-                        match nt.cmp(&ot) {
-                       
-                            std::cmp::Ordering::Greater => {
-                                all_entries.insert(as1.to_string(),index);
-                            }
-                            std::cmp::Ordering::Equal => {
-                                continue;
-                           //     println!("Next");
-                            }
-                            std::cmp::Ordering::Less => {
-                             //   println!("Next");
-                            }
-                        }
-                          
-                    }
-                    else{
-                        all_entries.insert(as1.to_string(),index);
-                    }
-                    
-                }
-            }
-            Err(e) => {
-                eprintln!("Error processing directory {}: {}", path, e);
-            }
-        }
-        index+=1;
-    }
-    for (index, (_,ceva)) in loc.iter().enumerate(){
-       // println!("C {ceva}");
-        let locatii=get_directory_contents(ceva).unwrap();
-        for ( b,k) in all_entries.clone()
-        {
-            let found = locatii.iter().any(|s1| s1.contains(&b));
-            if found && k== index{
-          //      println!("Fisierul '{}' exista.", b);
-            } else {
-               let loc_s=loc[k].1.clone()+&b;
-               let loc_d=ceva.clone()+&b; 
-               //println!("Mut de la {loc_s} la {loc_d}");
-               match fs::copy(loc_s, loc_d) {
-                Ok(_) => {
-                  //  println!("Fișierul a fost copiat cu succes.");
-                }
-                Err(e) => {
-                    eprintln!("Eroare la copierea fișierului: {}", e);
-                }
-            }
-            }
-           
-        }
-    }
- println!("All Entries: {:?}", all_entries);
- //return all_entries;
- //sincronizare_f(loc);
 }
 
 fn sincronizare_z(loc: Vec<(String, String)>)->Result<(), io::Error> {
@@ -619,7 +449,7 @@ fn f_z(path_f:String, path_z: String)->Result<(),io::Error>
     src_archive.start_file(name_f, options).unwrap();
     src_archive.write_all(&file_content).unwrap();
     src_archive.finish().unwrap();
-    copy_files_between_archives("C:\\Users\\bolot\\OneDrive\\Desktop\\b.zip", &path_z.clone());
+    copy_files_between_archives("C:\\Users\\bolot\\OneDrive\\Desktop\\b.zip", &path_z.clone()).unwrap();
     Ok(())
 }
 fn z_f(path_f:String, path_z: String,name_f:String)->Result<(),io::Error>
@@ -641,7 +471,7 @@ fn z_f(path_f:String, path_z: String,name_f:String)->Result<(),io::Error>
         }
     }
     let mut file_entry = zip_archive.by_index(file_index)?;
-    let fl=file_entry.name();
+    //let fl=file_entry.name();
     //println!("Nume fisier in z_f {}",fl );
         let mut file_content = Vec::new();
         file_entry.read_to_end(&mut file_content)?;
@@ -649,7 +479,7 @@ fn z_f(path_f:String, path_z: String,name_f:String)->Result<(),io::Error>
         // Specify the destination path for the moved file
         let destination_path = path_f+&'\\'.to_string()+&name_f;
         // Write the file content to the destination folder
-        let mut destination_file = File::create(&destination_path)?;
+        let mut destination_file = File::create(destination_path)?;
         destination_file.write_all(&file_content)?;
     Ok(())
 }
@@ -670,8 +500,8 @@ fn upload(a: &mut FtpStream,remote:String,remote_b:String,path1:String)
 fn ftp_z(a: &mut FtpStream, path_z:String,name_f:String)->Result<(),io::Error>
 {
     let c=name_f.rsplit('/').next().unwrap();
-    download(a, "C:\\Users\\bolot\\OneDrive\\Desktop\\Folder nou\\".to_string()+&c, name_f.clone());
-    f_z("C:\\Users\\bolot\\OneDrive\\Desktop\\Folder nou\\".to_string()+&c, path_z)?;
+    download(a, "C:\\Users\\bolot\\OneDrive\\Desktop\\Folder nou\\".to_string()+c, name_f.clone());
+    f_z("C:\\Users\\bolot\\OneDrive\\Desktop\\Folder nou\\".to_string()+c, path_z)?;
     Ok(())
 
 }
@@ -872,12 +702,14 @@ fn sync(vec_l: Vec<(String,String)>){
                         let er=z_f(path_f, path_z, j.0.clone());
                         match er{
                             Ok(())=>println!("Succes cu {}",j.0),
-                            Err(e)=>println!("Eroare la sin: {e}"),
+                            Err(e)=>println!("Eroare la sincronizare initiala: {e}"),
                         }
                     }
                     else if vec_l[j.1.0].0=="folder"
                     {
-
+                        let to=a.1.clone()+&'\\'.to_string()+j.0;
+                        let from=vec_l[j.1.0].1.clone()+&'\\'.to_string()+j.0;
+                        fs::copy(from, to).unwrap();
                     }
                 }
             }
@@ -888,6 +720,7 @@ fn sync(vec_l: Vec<(String,String)>){
         for (i1,i) in vec_l.iter().enumerate()
         {
             let mut fis_add:String=String::new();
+            let mut index_add=0;
             let mut fis_del:String=String::new();
             if i.0=="folder"
             {
@@ -939,9 +772,9 @@ fn sync(vec_l: Vec<(String,String)>){
                     break;
                    }
                 }
-                if fis_add!=""
+                if !fis_add.is_empty()
                 {
-                    for (ind_n,ind) in vec_l.iter().enumerate()
+                    for ind in vec_l.iter()
                     {
                         let name_f=fis_add.rsplit('\\').next().unwrap();
                         let cmp_n=ind.1.clone()+&'\\'.to_string()+name_f;
@@ -949,7 +782,7 @@ fn sync(vec_l: Vec<(String,String)>){
                         {
                             println!("S-a adaugat {}" ,fis_add);
                             println!("{}",ind.1);
-                            fs::copy(fis_add.clone(), ind.1.clone()).unwrap();
+                            fs::copy(fis_add.clone(), cmp_n.clone()).unwrap();
                         }
                         else if ind.0=="ftp"
                         {
@@ -961,11 +794,11 @@ fn sync(vec_l: Vec<(String,String)>){
                         }
                         else if ind.0=="zip"
                         {
-
+                            f_z(fis_add.clone(), ind.1.clone()).unwrap();
                         }
                     }
                 } 
-                else if fis_del!=""
+                else if !fis_del.is_empty()
                 {
                     for ind in &vec_l
                     {
@@ -981,11 +814,38 @@ fn sync(vec_l: Vec<(String,String)>){
                             let ftp_a=ftp_r.get_mut(&ind.1).unwrap();
                             let ftp_d=&mut ftp_a.0;
                             let path_del=ftp_a.1.clone()+&'/'.to_string()+&fis_del;
-                            ftp_d.rm(&path_del);
+                            ftp_d.rm(&path_del).unwrap();
                         }
                         else if ind.0=="zip"  //stergere in zip
                         {
+                            let src_path=ind.1.clone();
+                            let e_file = File::open(src_path).unwrap();
+                            let mut e_archive = ZipArchive::new(e_file).unwrap();
 
+                            let new_f=File::create("C:\\Users\\bolot\\OneDrive\\Desktop\\c.zip").unwrap();
+                            let mut n_arch=zip::ZipWriter::new(new_f);
+
+                            for i23 in 0..e_archive.len() {
+                                let mut file = e_archive.by_index(i23).unwrap();
+                        
+                                // Skip the file to delete
+                                if file.name() == fis_del {
+                                    continue;
+                                }
+                        
+                                let options = FileOptions::default()
+                                    .compression_method(CompressionMethod::Stored);
+                                   
+                        
+                                n_arch.start_file(file.name(), options).unwrap();
+                        
+                                let mut buffer = Vec::new();
+                                file.read_to_end(&mut buffer).unwrap();
+                        
+                                n_arch.write_all(&buffer).unwrap();
+                            }
+                            n_arch.finish().unwrap();
+                            copy_files_between_archives("C:\\Users\\bolot\\OneDrive\\Desktop\\c.zip", &ind.1.clone()).unwrap();
                         }
                     }
                 }
@@ -994,7 +854,99 @@ fn sync(vec_l: Vec<(String,String)>){
             {
                 let ftp_a=ftp_r.get_mut(&i.1).unwrap();
                 let ftp_d=&mut ftp_a.0;
-            } //nu trebuie mers in zip, e read only!!(adaug la siguranta la final)
+                let pathname=Some(String::as_str(&ftp_a.1));
+                let lista_file=ftp_d.nlst(pathname).unwrap();
+                for i in &lista_file
+                {
+                    let name_i=i.rsplit('/').next().unwrap();
+                    if !&fisiere.contains_key(name_i)
+                    {
+                        index_add=i1;
+                        fis_add=name_i.to_string();
+                        let ptt=i;
+                        println!("Path ptt= {ptt}");
+                        let time_ft=ftp_d.mdtm(ptt).unwrap().unwrap();
+                        let time_ftp=time_ft.num_seconds_from_unix_epoch() as u64;
+                        fisiere.insert(name_i.to_string(), (i1,time_ftp));
+                        break;
+                    }
+                    else {
+                        let ptt=i;
+                        let time_ft=ftp_d.mdtm(ptt).unwrap().unwrap();
+                        let time_ftp=time_ft.num_seconds_from_unix_epoch() as u64;
+                        let o_t=fisiere[name_i].1;
+                        //println!("{o_t}{time_ftp}");
+                        if o_t<time_ftp
+                        {
+                            println!("Modificare in ");
+                            fis_add=name_i.to_string();
+                            fisiere.insert(name_i.to_string(), (i1,o_t));
+                            break;
+                        }
+                    }
+                }
+                for ij in &fisiere
+                {
+                    let mut ok_g=1;
+                    for tt in &lista_file
+                    {
+                        let n_tt=tt.rsplit('/').next().unwrap();
+                        if n_tt.to_string()==*ij.0
+                        {
+                            ok_g=0;
+                            break;
+                        }
+                    }
+                    if ok_g==1
+                    {
+                        fis_del=ij.0.to_string();
+                        fisiere.remove(&fis_del);
+                        break;
+                    }
+                } 
+                if !fis_add.is_empty()
+                {
+                    for (in1,nsh) in vec_l.iter().enumerate()
+                    {
+                        if in1!=i1
+                        {
+                            if nsh.0=="folder"
+                            {
+                                let path_f=vec_l[index_add].1.clone();
+                                let ftp_dm=ftp_r.get_mut(&path_f).unwrap();
+                                let p_ftp=ftp_dm.1.clone()+&'/'.to_string()+&fis_add;
+                                let a= &mut ftp_dm.0;
+                                let b=nsh.1.clone()+&'\\'.to_string()+&fis_add;
+                                println!("b={b}");
+                                download(a, b, p_ftp);
+                            }
+                            else if nsh.1=="zip"
+                            {
+
+                            }
+                        }
+                    }
+                }
+                else if !fis_del.is_empty() {
+                    for (in1,nsh) in vec_l.iter().enumerate()
+                    {
+                        if in1!=i1
+                        {
+                            if nsh.0=="folder"
+                            {
+                                let b=nsh.1.clone()+&'\\'.to_string()+&fis_del;
+                                fs::remove_file(b).unwrap();
+                            }
+                            else if nsh.1=="zip"
+                            {
+
+                            }
+                        }
+                    }
+                    
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_secs(1));  //nu trebuie mers in zip, e read only!!(adaug la siguranta la final)
         }
         std::thread::sleep(std::time::Duration::from_secs(1)); 
     }
@@ -1039,16 +991,13 @@ fn main() {
         a+=1;
     }
     println!("Nr locatii= {}", locatii.len());
-    if ok==1
+    if ok==1 || loc_s=="folder"
     {
+        println!("Apel folder");
         sync(locatii.clone());
     }
     else{
-    if loc_s=="folder" {
-          sincronizare_f(locatii.clone());
-    }
-
-    else if loc_s=="zip"
+     if loc_s=="zip"
     {
         println!("Apelez zip!!");
         let ab=sincronizare_z(locatii.clone());
