@@ -1,17 +1,12 @@
-//use core::time;
 use std::collections::HashMap;
-//use std::error::Error;
 use std::fs::{File, metadata};
-//use clap::error::Error;
-//use clap::builder::Str;
-use ftp::{FtpError, FtpStream};
+use ftp:: FtpStream;
 use std::fs;
 use std::time:: UNIX_EPOCH;
 use zip::DateTime;
 use zip::read::ZipArchive;
 use zip::write::FileOptions;
 use std::io::{self, prelude::*};
-//use ftp::types::FileType;
 use std::path::Path;
 use zip::{write::ZipWriter, CompressionMethod};
 use chrono::{ TimeZone, Datelike, Timelike,Utc};
@@ -38,28 +33,6 @@ fn get_directory_contents(directory_path: &str) -> Result<Vec<String>, std::io::
     }
 
     Ok(entries)
-}
-
-fn sincronizare_z(loc: Vec<(String, String)>)->Result<(), io::Error> {
-    let mut ind=0;
-    let a=loc.len();
-    print!("{a}");
-        while ind<a {
-        if ind+1>=a{
-            copy_files_between_archives(&loc[ind].1,&loc[0].1)?;
-        }
-        else
-        {
-            copy_files_between_archives(&loc[ind].1,&loc[ind+1].1)?;
-        }
-        ind+=1;
-    }
-    while ind<a-1
-    {
-        copy_files_between_archives(&loc[0].1,&loc[ind].1)?;
-        ind+=1;
-    }
-    Ok(())
 }
 
 fn copy_files_between_archives(src_path: &str, dest_path: &str) -> Result<(), io::Error> {
@@ -131,273 +104,6 @@ fn copy_files_between_archives(src_path: &str, dest_path: &str) -> Result<(), io
     Ok(())
 }
 
-fn sincronizare_ftp(loc: Vec<(String, String)>)-> Result<(),FtpError>
-{
-    let mut fisiere:HashMap<String,usize>=HashMap::new();
-    let mut user_v:Vec<String>=Vec::new();
-    let mut  parole_v:Vec<String>=Vec::new();
-    let mut url_v:Vec<String>=Vec::new();
-    let mut path_v:Vec<String>=Vec::new();
-    let mut  index=0;
-    //prelucrez input
-    while index<loc.len() {
-        println!("{}",loc[index].1);
-        let ind=&loc[index].1.find(':').unwrap();
-        user_v.push((loc[index].1[0..*ind]).to_string());
-        let ind1=&loc[index].1[*ind+1..].find('@').unwrap();
-        
-        parole_v.push(loc[index].1[*ind+1..*ind+*ind1+1].to_string());
-        let ind2=&loc[index].1[*ind1+*ind+2..].find('/').unwrap();
-        url_v.push(loc[index].1[*ind1+*ind+2..*ind1+*ind+2+ind2].to_string());
-        path_v.push(loc[index].1[*ind1+*ind+2+*ind2..].to_string());
-        index+=1;
-    }
-    let mut ftp_v:Vec<FtpStream>=Vec::new();
-    index=0;
-    while index< loc.len() //conectare la servere
-    {
-    match FtpStream::connect((url_v[index].clone(),21)) {
-        Ok( mut ftp_stream) => {
-            // Autentificare cu nume de utilizator și parolă
-            if let Err(err) = ftp_stream.login(&user_v[index], &parole_v[index]) {
-                eprintln!("Failed to log in to {}: {:?}",url_v[0].clone(), err);
-            }
-             else {
-                println!("Connection successful and logged in to {}!", url_v[0]);
-                let p=Some(String::as_str(&path_v[index]));
-            let source_files=ftp_stream.list(p);
-                ftp_v.push(ftp_stream);
-                for it in source_files.unwrap()
-                {
-                    println!("It ={:?}",it);
-                    let path_i=path_v[index].to_string()+"/"+it.rsplit(' ').next().unwrap();
-                    if !it.starts_with('d')
-                    {
-                    let a=ftp_v[index].mdtm(&path_i).unwrap();
-                    if fisiere.contains_key(it.rsplit(' ').next().unwrap())
-                    {
-                        let index_n=fisiere[it.rsplit(' ').next().unwrap()];
-                        let c_n=path_v[index_n].clone()+"/"+it.rsplit(' ').next().unwrap();
-                        let b=ftp_v[index_n].mdtm(&c_n).unwrap();
-                        println!("A= {:?} si B={:?}",a,b);
-                        if a>b
-                        {
-                            fisiere.insert(it.rsplit(' ').next().unwrap().to_string(), index);
-                        }
-                    }
-                    else{
-                    fisiere.insert(it.rsplit(' ').next().unwrap().to_string(), index);
-                    }
-                    }
-
-                }
-                //println!("{:?}",source_files.unwrap());
-            }
-        }
-        Err(err) => {
-            eprintln!("Failed to connect to {}: {:?}", url_v[0].clone(), err);
-        }
-    }
-    index+=1;
-    //let source_files=ftp_stream1.list(None);
-}
-    //index=0;
-    println!("Fisierele toate {:?}",fisiere);
-
-    let mut fisiere_l: Vec<String>=Vec::new();
-    for il in fisiere.iter()
-    {
-        let path_l="C:\\Users\\bolot\\OneDrive\\Desktop\\Folder nou\\".to_string();
-        
-        let server_s: &mut FtpStream=&mut ftp_v[*il.1];
-        let local_path=path_l.clone()+il.0;
-        let mut local_file = File::create(local_path.clone()).unwrap();
-        let sp=path_v[*il.1].clone()+"/"+il.0;
-        println!("{}",sp);
-        let  file_data1 = server_s.simple_retr(&sp).unwrap();
-        let file_data=file_data1.get_ref();
-        let c_r=local_file.write_all(file_data);
-        match c_r {
-            Ok(())=>println!(" "),
-            Err(e)=>println!("{e}"),
-        }
-        fisiere_l.push(local_path.clone());
-
-    }
-//initial sincronizare locatii
-   let mut inbex=0;
-   let lg=ftp_v.len();
-    while inbex<lg
-    {
-        for i in fisiere_l.clone()
-        {
-            println!("Sunt in locatia {inbex}");
-            println!("{i}");
-            let mut flo=File::open(i.clone()).unwrap();
-              let rf=i.rsplit('\\').next().unwrap();
-              if inbex!=fisiere[rf]
-              {
-                println!("{rf}");
-                let mut sc=FtpStream::connect((url_v[inbex].clone(),21)).unwrap();
-                let b=sc.login(&user_v[inbex], &parole_v[inbex]); 
-                match b{
-                    Ok(())=> println!("Yes"),
-                    Err(e)=>println!("Eroare la reconectare {e}"),
-                };
-                println!("Locatia folder nou {}",i);
-                let n_p=path_v[inbex].to_string()+"/"+rf;
-                //sc.transfer_type(FileType::Binary).unwrap();
-                let err=sc.put(&n_p, &mut flo);
-                match err {
-                    Ok(_)=>println!("YEEEI"),
-                    Err(e)=>eprintln!("Eroare urcare fisier {e}"),
-                }
-              }
-        }
-        inbex+=1;
-    }
-
-
-    let mut v_n_f:Vec<String>=Vec::new();
-            for i in fisiere.keys()
-            {
-                let c=i.rsplit('\\').next().unwrap().to_string();
-                println!("Acesta este {c}");
-                v_n_f.push(c);
-            }
-    loop{
-        let mut i=0;
-        let lg=ftp_v.len();
-        while i<lg
-        {
-            println!("{},{}",user_v[i],parole_v[i]);
-            let mut sc=FtpStream::connect((url_v[i].clone(),21)).unwrap();
-            let b=sc.login(&user_v[i], &parole_v[i]); 
-            match b{
-                Ok(())=> println!("Yes"),
-                Err(e)=>println!("Eroare la reconectare {e}"),
-            };
-            let as1=Some(String::as_str(&path_v[i]));
-            let s_files=sc.nlst(as1).unwrap();
-            println!("Serverul {i} are {:?}",s_files);
-
-            let mut  dif_f_s:Vec<String>=Vec::new();
-            for j1 in v_n_f.iter()
-            {
-                let mut ok=0;
-                for b1 in s_files.iter()
-                {
-                    if j1== b1.rsplit('/').next().unwrap()
-                    {
-                        ok=1;
-                    }
-                }
-                if ok==0
-                {
-                    dif_f_s.push(j1.to_string());
-                }
-            }
-            let mut dif_s_f:Vec<String>=Vec::new();
-            for b1 in s_files.iter()
-            {
-                let mut ok=0;
-                for j1 in v_n_f.iter()
-                {
-                    if j1== b1.rsplit('/').next().unwrap()
-                    {
-                        ok=1;
-                    }
-                }
-                if ok==0
-                {
-                    dif_s_f.push(b1.to_string());
-                }
-            }
-            println!("Diferenta1  este {:?} si dif 2 e {:?}",dif_f_s,dif_s_f);
-            if !dif_f_s.is_empty() //s-a sters un fisier
-            {
-                println!("S-a sters un fisier: {}",dif_f_s[0]);
-                let mut pf_s:String=String::from("");
-                for is in fisiere_l.clone()
-                {
-                    if is.contains(&dif_f_s[0].clone())
-                    {
-                        pf_s=is;
-                        break;
-                    }
-                }
-                println!("Path stergere: {}",pf_s);
-                match fs::remove_file(pf_s)
-                {
-                    Ok(_)=> println!(),
-                    Err(e)=>println!("Eroare stergere {}",e),
-                }
-                v_n_f.retain(|elem| elem != &dif_f_s[0]);
-                let mut j=0;
-                while j<ftp_v.len()
-                {
-                    if j!=i{
-                        let mut ftp_stream = FtpStream::connect((url_v[j].clone(), 21))?;
-                        ftp_stream.login(&user_v[j], &parole_v[j])?;
-                    
-                        let p_s=path_v[j].clone()+"/"+&dif_f_s[0];
-                        println!("Vreau sa sterg de pe server {}",p_s);
-                        ftp_stream.rm(&p_s)?;
-                    }
-                    j+=1;
-                }
-                println!("Fisiere dupa stergere {:?}",v_n_f);
-                fisiere.remove(&dif_f_s[0]);
-            }
-            else if !dif_s_f.is_empty()
-            { //s-a adugat
-                v_n_f.push(dif_s_f[0].rsplit('/').next().unwrap().to_string());
-                println!("{:?}",v_n_f);
-                let path_l="C:\\Users\\bolot\\OneDrive\\Desktop\\Folder nou\\".to_string();
-                let server_s: &mut FtpStream=&mut ftp_v[i];
-                let local_path=path_l.clone()+dif_s_f[0].rsplit('/').next().unwrap();
-                //println!("{:?}",local_path);
-                download(server_s,local_path.clone(),dif_s_f[0].clone());
-                for (ind,it_s) in ftp_v.iter_mut().enumerate() 
-                {
-                        if ind!=i{
-                        println!("Fac upload in {ind}");
-                        upload(it_s,dif_s_f[0].rsplit('/').next().unwrap().to_string(),path_v[ind].clone(),local_path.clone());
-                        }
-                }
-                fisiere.insert(dif_s_f[0].rsplit('/').next().unwrap().to_string(), i);
-            }
-            else {
-                println!("Egal");
-                for (i1,v) in fisiere.clone()
-                {
-                    let path_a=path_v[i].clone()+"/"+&i1;
-                    println!("Primul {}",path_a);
-                    let t1=ftp_v[i].mdtm(&path_a).unwrap();
-                    let path_b=path_v[v].clone()+"/"+&i1;
-                    println!( "Doi {}",path_b);
-                    let t2=ftp_v[v].mdtm(&path_b).unwrap();
-                    if t1>=t2 {
-                        println!("E mai nou {i}");
-                        std::thread::sleep(std::time::Duration::from_secs(1)); 
-                        let l_p23="C:\\Users\\bolot\\OneDrive\\Desktop\\Folder nou\\".to_string()+&i1;
-                        println!("Download ");
-                        download(&mut ftp_v[i], l_p23.clone(), path_a);
-                        fisiere.insert(i1.to_string().clone(),i);
-                        for (iss,zz) in ftp_v.iter_mut().enumerate()
-                        {
-                            upload(zz, i1.clone(), path_v[iss].clone(), l_p23.clone());
-                        }
-                    }
-                }
-            }
-            i+=1;
-
-        }
-        std::thread::sleep(std::time::Duration::from_secs(3)); 
-    }
-    //Ok(())
-}
 fn download(a: &mut FtpStream,b:String ,c: String  )
 {
     //println!("Path download {}",b);
@@ -654,9 +360,20 @@ fn sync(vec_l: Vec<(String,String)>){
                         println!("Nume file de mutat in ftp {}",ftp_p);
                         z_ftp(path_z1.to_string(), aux, ftp_p).unwrap();
                     }
-                    else if vec_l[j.1.0].0=="ftp"
+                    else if vec_l[j.1.0].0=="ftp"  //din j in a
                     {
-
+                        let path_l="C:\\Users\\bolot\\OneDrive\\Desktop\\Folder nou\\".to_string();
+                        let b= path_l+&'\\'.to_string()+j.0;
+                                let pathf=vec_l[j.1.0].1.clone();
+                                let server_s1=ftp_r.get_mut(&pathf).unwrap();
+                                let server_s=&mut server_s1.0;
+                                let c=server_s1.1.clone()+&'/'.to_string()+j.0;
+                                //println!("{:?}",local_path);
+                                download(server_s,b.clone(),c);
+                                let server_d1= ftp_r.get_mut(&a.1).unwrap();
+                                let server_d=&mut server_d1.0;
+                                let bb=server_d1.1.clone();
+                                upload(server_d, j.0.clone(),bb, b);
                     }
                 }  
                 else if a.0=="zip"{
@@ -681,7 +398,61 @@ fn sync(vec_l: Vec<(String,String)>){
                     }
                     else if vec_l[j.1.0].0=="zip"
                     {
+                        //din j in a
+                        let src_file = File::create("C:\\Users\\bolot\\OneDrive\\Desktop\\c.zip").unwrap();//se creaza arhiva noua!!!
+                        let mut src_archive = zip::ZipWriter::new(src_file);
+                        
+                        //deschid a
+                        let dest_file = File::open(a.1.clone()).unwrap();
+                        println!("Arhiva a {}",a.1);
+                        let mut dest_archive = ZipArchive::new(dest_file).unwrap();
 
+                        let name_f=j.0.clone();
+                        println!("Nume folder {}",name_f);
+
+                        for i in 0..dest_archive.len() {
+                            let mut file = dest_archive.by_index(i).unwrap();
+                    
+                            let options = FileOptions::default()
+                                .compression_method(CompressionMethod::Stored);
+                               
+                            let name_fz=file.name();
+                            if name_fz!=name_f
+                            {
+                            src_archive.start_file(file.name(), options).unwrap();
+                    
+                            let mut buffer = Vec::new();
+                            file.read_to_end(&mut buffer).unwrap();
+                    
+                            src_archive.write_all(&buffer).unwrap();
+                            }
+                        }
+                        //a e mutat in c
+
+                         let dest_file_j = File::open(vec_l[j.1.0].1.clone()).unwrap();
+                        let mut dest_archive_j = ZipArchive::new(dest_file_j).unwrap();
+
+                        for i in 0..dest_archive_j.len() {
+                            let mut file = dest_archive_j.by_index(i).unwrap();
+                    
+                            let options = FileOptions::default()
+                                .compression_method(CompressionMethod::Stored);
+                               
+                            let name_fz=file.name();
+                            if name_fz==name_f
+                            {
+                            src_archive.start_file(file.name(), options).unwrap();
+                    
+                            let mut buffer = Vec::new();
+                            file.read_to_end(&mut buffer).unwrap();
+                    
+                            src_archive.write_all(&buffer).unwrap();
+                            break;
+                            }
+                        }
+                        src_archive.finish().unwrap();
+                        println!("zip {}",a.1);
+                        copy_files_between_archives("C:\\Users\\bolot\\OneDrive\\Desktop\\c.zip", &a.1.clone()).unwrap();
                     }
                 } 
                 else if a.0 =="folder"{
@@ -719,6 +490,8 @@ fn sync(vec_l: Vec<(String,String)>){
      loop {
         for (i1,i) in vec_l.iter().enumerate()
         {
+            println!("Sunt in {}",i.1);
+            println!("{:?}",fisiere);
             let mut fis_add:String=String::new();
             let mut index_add=0;
             let mut fis_del:String=String::new();
@@ -780,7 +553,7 @@ fn sync(vec_l: Vec<(String,String)>){
                         let cmp_n=ind.1.clone()+&'\\'.to_string()+name_f;
                         if ind.0=="folder" && fis_add!=cmp_n //sa nu adaug in acelasi fisier
                         {
-                            println!("S-a adaugat {}" ,fis_add);
+                            println!("S-a adaugat in folder la folder {}" ,fis_add);
                             println!("{}",ind.1);
                             fs::copy(fis_add.clone(), cmp_n.clone()).unwrap();
                         }
@@ -794,18 +567,19 @@ fn sync(vec_l: Vec<(String,String)>){
                         }
                         else if ind.0=="zip"
                         {
+                            println!("UPDATE");
                             f_z(fis_add.clone(), ind.1.clone()).unwrap();
                         }
                     }
                 } 
-                else if !fis_del.is_empty()
+                if !fis_del.is_empty()
                 {
                     for ind in &vec_l
                     {
                         if ind.0=="folder"
                         {
                             let path_r=ind.1.clone()+&'\\'.to_string()+&fis_del;
-                            println!("Path stergere ftp {}",path_r);
+                            println!("Path stergere folder {}",path_r);
                             if ind.1!=i.1
                             {fs::remove_file(path_r).unwrap();}
                         }
@@ -814,10 +588,12 @@ fn sync(vec_l: Vec<(String,String)>){
                             let ftp_a=ftp_r.get_mut(&ind.1).unwrap();
                             let ftp_d=&mut ftp_a.0;
                             let path_del=ftp_a.1.clone()+&'/'.to_string()+&fis_del;
+                            println!("Vreau sa sterg: {path_del}");
                             ftp_d.rm(&path_del).unwrap();
                         }
                         else if ind.0=="zip"  //stergere in zip
                         {
+                            println!("Sterg {}",fis_del);
                             let src_path=ind.1.clone();
                             let e_file = File::open(src_path).unwrap();
                             let mut e_archive = ZipArchive::new(e_file).unwrap();
@@ -875,12 +651,12 @@ fn sync(vec_l: Vec<(String,String)>){
                         let time_ft=ftp_d.mdtm(ptt).unwrap().unwrap();
                         let time_ftp=time_ft.num_seconds_from_unix_epoch() as u64;
                         let o_t=fisiere[name_i].1;
-                        //println!("{o_t}{time_ftp}");
-                        if o_t<time_ftp
+                        println!("Timpii {o_t} si {time_ftp}");
+                        if o_t+1<time_ftp
                         {
-                            println!("Modificare in ");
+                            println!("Modificare in {ptt}");
                             fis_add=name_i.to_string();
-                            fisiere.insert(name_i.to_string(), (i1,o_t));
+                            fisiere.insert(name_i.to_string(), (i1,time_ftp));
                             break;
                         }
                     }
@@ -891,7 +667,7 @@ fn sync(vec_l: Vec<(String,String)>){
                     for tt in &lista_file
                     {
                         let n_tt=tt.rsplit('/').next().unwrap();
-                        if n_tt.to_string()==*ij.0
+                        if n_tt==ij.0
                         {
                             ok_g=0;
                             break;
@@ -899,6 +675,7 @@ fn sync(vec_l: Vec<(String,String)>){
                     }
                     if ok_g==1
                     {
+                        println!("S-a sters fisier {}",fis_del);
                         fis_del=ij.0.to_string();
                         fisiere.remove(&fis_del);
                         break;
@@ -920,14 +697,36 @@ fn sync(vec_l: Vec<(String,String)>){
                                 println!("b={b}");
                                 download(a, b, p_ftp);
                             }
-                            else if nsh.1=="zip"
+                            else if nsh.0=="zip"
                             {
-
+                                let path_z=vec_l[i1].1.clone();
+                                println!("path_f {path_z}");
+                                let ftp_dm=ftp_r.get_mut(&path_z).unwrap();
+                                let p_ftp=ftp_dm.1.clone()+&'/'.to_string()+&fis_add;
+                                let a= &mut ftp_dm.0;
+                                ftp_z(a, nsh.1.clone(), p_ftp.clone()).unwrap();
+                            }
+                            else if nsh.0=="ftp"
+                            {
+                                let path_l="C:\\Users\\bolot\\OneDrive\\Desktop\\Folder nou\\".to_string();
+                                let b= path_l+&'\\'.to_string()+&fis_add;
+                                let pathf=vec_l[i1].1.clone();
+                                let server_s1=ftp_r.get_mut(&pathf).unwrap();
+                                let server_s=&mut server_s1.0;
+                                //am deschis server cu fisier recent
+                                let c=server_s1.1.clone()+&'/'.to_string()+&fis_add;
+                                //println!("{:?}",local_path);
+                                download(server_s,b.clone(),c);
+                                let server_d1= ftp_r.get_mut(&nsh.1).unwrap();
+                                let server_d=&mut server_d1.0;
+                                let bb=server_d1.1.clone();
+                                upload(server_d, fis_add.clone(),bb, b);
                             }
                         }
                     }
                 }
-                else if !fis_del.is_empty() {
+          if !fis_del.is_empty() {
+                
                     for (in1,nsh) in vec_l.iter().enumerate()
                     {
                         if in1!=i1
@@ -937,16 +736,52 @@ fn sync(vec_l: Vec<(String,String)>){
                                 let b=nsh.1.clone()+&'\\'.to_string()+&fis_del;
                                 fs::remove_file(b).unwrap();
                             }
-                            else if nsh.1=="zip"
+                            else if nsh.0=="zip" //stergere in zip
                             {
+                                let src_path=nsh.1.clone();
+                                let e_file = File::open(src_path).unwrap();
+                                let mut e_archive = ZipArchive::new(e_file).unwrap();
+    
+                                let new_f=File::create("C:\\Users\\bolot\\OneDrive\\Desktop\\c.zip").unwrap();
+                                let mut n_arch=zip::ZipWriter::new(new_f);
+    
+                                for i23 in 0..e_archive.len() {
+                                    let mut file = e_archive.by_index(i23).unwrap();
+                            
+                                    // Skip the file to delete
+                                    if file.name() == fis_del {
+                                        continue;
+                                    }
+                            
+                                    let options = FileOptions::default()
+                                        .compression_method(CompressionMethod::Stored);
+                                       
+                            
+                                    n_arch.start_file(file.name(), options).unwrap();
+                            
+                                    let mut buffer = Vec::new();
+                                    file.read_to_end(&mut buffer).unwrap();
+                            
+                                    n_arch.write_all(&buffer).unwrap();
+                                }
+                                n_arch.finish().unwrap();
+                                copy_files_between_archives("C:\\Users\\bolot\\OneDrive\\Desktop\\c.zip", &nsh.1.clone()).unwrap();
 
+                            }
+                            else if nsh.0=="ftp" {
+                                let server_d1= ftp_r.get_mut(&nsh.1).unwrap();
+                                let server_d=&mut server_d1.0;
+                                let bas=server_d1.1.clone();
+                                let path_sters=bas.clone()+&'/'.to_string()+&fis_del;
+                                println!("Path sters= {path_sters}");
+                                server_d.rm(&path_sters).unwrap();
                             }
                         }
                     }
                     
                 }
             }
-            std::thread::sleep(std::time::Duration::from_secs(1));  //nu trebuie mers in zip, e read only!!(adaug la siguranta la final)
+            std::thread::sleep(std::time::Duration::from_secs(1));  
         }
         std::thread::sleep(std::time::Duration::from_secs(1)); 
     }
@@ -991,29 +826,10 @@ fn main() {
         a+=1;
     }
     println!("Nr locatii= {}", locatii.len());
-    if ok==1 || loc_s=="folder"
+    if ok==1 || loc_s=="folder" || loc_s=="ftp" || loc_s=="zip"
     {
         println!("Apel folder");
         sync(locatii.clone());
     }
-    else{
-     if loc_s=="zip"
-    {
-        println!("Apelez zip!!");
-        let ab=sincronizare_z(locatii.clone());
-        match ab{
-            Ok(())=> println!("Sincronizarea a avut succes!"),
-            Err(e)=> println!("Eroarea este {}",e)
-        }
-    }
-    else {
-        println!("Am ftp-uri");
-        let ab=sincronizare_ftp(locatii.clone());
-        match ab{
-            Err(e)=>println!("Eroare {}",e),
-            Ok(())=> print!("s")
-        }   
-    }
-}
 }
   
